@@ -2,39 +2,43 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-let orders = {}; // memory database
+let orders = {};
 
-// 🔹 CREATE ORDER AFTER PAYMENT
+// CREATE ORDER
 app.post("/create-order", (req, res) => {
   const { totalAmount, paidAmount } = req.body;
 
   if (paidAmount >= totalAmount) {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = Math.floor(100000 + Math.random() * 900000);
 
     orders[code] = {
       paid: true,
-      printed: false,
+      time: new Date()
     };
 
-    res.json({ orderCode: code });
+    return res.json({ orderCode: code });
   } else {
-    res.status(400).json({ message: "Payment incomplete" });
+    return res.status(400).json({ message: "Payment incomplete" });
   }
 });
 
-// 🔹 VERIFY ORDER FOR PRINTING
-app.post("/verify-order", (req, res) => {
-  const { code } = req.body;
+// VERIFY ORDER
+app.get("/verify-order/:code", (req, res) => {
+  const code = req.params.code;
 
-  if (!orders[code]) return res.json({ status: "INVALID" });
-
-  if (orders[code].printed) return res.json({ status: "USED" });
-
-  orders[code].printed = true;
-  res.json({ status: "OK" });
+  if (orders[code]) {
+    res.json({ valid: true });
+  } else {
+    res.status(404).json({ valid: false });
+  }
 });
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});

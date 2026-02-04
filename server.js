@@ -20,19 +20,38 @@ const razorpay = new Razorpay({
 
 // Test route
 app.get("/", (req, res) => {
-  res.send("Backend is running 🚀");
+  res.send("A4station Backend running 🚀");
 });
+
+
+// HELPER 6 DIGIT CODE
+function generateOrderCode() {
+  return Math,floor(100000+Math.random()
+* 900000).toString();
+}
 
 
 // 🔹 CREATE ORDER API
 app.post("/create-order", async (req, res) => {
   try {
-    const { amount } = req.body;
+    let { pages, printType, copies } = req.body;
+
+    pages = Number(pages) || 1;
+    copies = Number (copies) || 1;
+    printType = Number (printType) || "bw"
+
+    const bwPrice = 5; // B/W per page
+    const colorPrice = 10; // Color per page
+
+    const pricePerPage = printType === "color" ? colorPrice : bwPrice;
+    const totalAmount = pages * copies * pricePerPage;
+
+    console.log("Calculated Total Amount (₹):", totalAmount);
 
     const options = {
-      amount: amount * 100, // rupees → paise
+      amount: totalAmount * 100, // ⭐ Rupees → Paise
       currency: "INR",
-      receipt: "receipt_" + Date.now(),
+      receipt: "order_" + Date.now(),
     };
 
     const order = await razorpay.orders.create(options);
@@ -40,13 +59,16 @@ app.post("/create-order", async (req, res) => {
     res.json({
       success: true,
       orderId: order.id,
+      amount: options.amount, // ✅ Razorpay ke liye paise me
     });
-
-  } catch (error) {
-    console.log("Create Order Error:", error);
-    res.status(500).json({ success: false, message: "Order creation failed" });
+  } catch (err) {
+    console.log("Create Order Error:", err);
+    res.status(500).json({ success: false ,
+      error : err.message
+    });
   }
 });
+  
 
 
 // 🔹 VERIFY PAYMENT API
@@ -66,11 +88,15 @@ app.post("/verify-payment", (req, res) => {
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      res.json({ success: true, message: "Payment verified ✅" });
+      const orderCode = generateOrderCode();
+
+      res.json({ success: true, 
+        message: "Payment verified ✅",
+      orderCode:orderCode,
+     });
     } else {
       res.status(400).json({ success: false, message: "Invalid signature ❌" });
-    }
-
+    } 
   } catch (error) {
     console.log("Verification Error:", error);
     res.status(500).json({ success: false });

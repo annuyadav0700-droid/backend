@@ -1,74 +1,62 @@
-// ===== IMPORTS =====
+
 const express = require("express");
 const Razorpay = require("razorpay");
-const crypto = require("crypto");
 const cors = require("cors");
+const bodyParser = require("body-parser");
 
-// ===== APP INIT =====
 const app = express();
-app.use(express.json());
-app.use(cors()); // Allow frontend requests
+app.use(cors());
+app.use(bodyParser.json());
 
-// ===== RAZORPAY INSTANCE =====
+// Razorpay instance
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID, // Render ENV variable
-  key_secret: process.env.RAZORPAY_KEY_SECRET // Render ENV variable
+  key_id: "rzp_live_S86JCGSl30lgly", // Render + Frontend me same key
+  key_secret: "Mnv0K6snW6SHkCxtjRhq03CF"
 });
 
-// ===== CREATE ORDER =====
+// Health check
+app.get("/", (req, res) => {
+  res.send("Server is running");
+});
+
+// Create order route
 app.post("/create-order", async (req, res) => {
   try {
-    console.log("Create-order body:", req.body);
+    const { pages, copies, printType } = req.body;
 
-    const { amount } = req.body;
+    // Price logic
+    const BW_PRICE = 5;
+    const COLOR_PRICE = 10;
+    const pricePerPage = printType === "color" ? COLOR_PRICE : BW_PRICE;
 
-    if (!amount) {
-      return res.status(400).json({ error: "Amount missing" });
-    }
+    // Total amount
+    const totalAmount = Number(pages) * Number(copies) * pricePerPage;
+
+    console.log("Pages:", pages);
+    console.log("Copies:", copies);
+    console.log("Print type:", printType);
+    console.log("FINAL AMOUNT ₹:", totalAmount);
 
     const options = {
-      amount: amount * 100, // backend multiply, frontend sends rupees
+      amount: totalAmount * 100, // Razorpay expects paise
       currency: "INR",
-      receipt: "receipt_" + Date.now()
+      receipt: "receipt_" + Date.now(),
     };
 
+    console.log("Sending to Razorpay (paise):", options.amount);
+
     const order = await razorpay.orders.create(options);
-    console.log("Order created:", order);
 
-    res.json(order); // send order back to frontend
+    res.json(order); // frontend will get order_id and amount
 
   } catch (err) {
-    console.log("CREATE ORDER ERROR:", err);
-    res.status(500).json({ error: "Order creation failed" });
+    console.log("Error creating order:", err);
+    res.status(500).send("Error creating order");
   }
 });
 
-// ===== VERIFY PAYMENT =====
-app.post("/verify-payment", (req, res) => {
-  try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ error: "Missing payment details" });
-    }
-
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
-      .digest("hex");
-
-    if (expectedSignature === razorpay_signature) {
-      res.json({ success: true });
-    } else {
-      res.status(400).json({ success: false, error: "Signature mismatch" });
-    }
-  } catch (err) {
-    console.log("VERIFY PAYMENT ERROR:", err);
-    res.status(500).json({ error: "Payment verification failed" });
-  }
-});
-
-// ===== SERVER START =====
+// Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log("Server running on port", PORT));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

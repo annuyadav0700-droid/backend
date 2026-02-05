@@ -35,8 +35,20 @@ function generateOrderCode() {
 app.post("/create-order", async (req, res) => {
   try{
     const {pages, copies, printType} = req.body;
-    const pricePerPage = printType ==="color"? 10:5;
-    const total = pages*copies*pricePerPage;
+    let pricePerPage;
+    if (printType === "color") {
+      pricePerPage = 10;
+    } else if (printType ==="bw") {
+       pricePerPage = 5;
+      } else {
+        pricePerPage =5;
+      }
+    const total = Number (pages)*Number (copies) * pricePerPage;
+    console.log("PRINT TYPE:",printType);
+    console.log("PAGES:",pages);
+    console.log("COPIES:", copies);
+    console.log("PRICE PER PAGE:", pricePerPage);
+    console.log("TOTAL ₹:", total);
     const options = {
       amount: total*100,
       currency :"INR",

@@ -33,42 +33,26 @@ function generateOrderCode() {
 
 // 🔹 CREATE ORDER API
 app.post("/create-order", async (req, res) => {
-  try {
-    let { pages, printType, copies } = req.body;
-
-    pages = Number(pages) || 1;
-    copies = Number (copies) || 1;
-    printType = Number (printType) || "bw"
-
-    const bwPrice = 5; // B/W per page
-    const colorPrice = 10; // Color per page
-
-    const pricePerPage = printType === "color" ? colorPrice : bwPrice;
-    const totalAmount = pages * copies * pricePerPage;
-
-    console.log("Calculated Total Amount (₹):", totalAmount);
-
+  try{
+    const {pages, copies, printType} = req.body;
+    const pricePerPage = printType ==="color"? 10:5;
+    const total = pages*copies*pricePerPage;
     const options = {
-      amount: totalAmount * 100, // ⭐ Rupees → Paise
-      currency: "INR",
-      receipt: "order_" + Date.now(),
+      amount: total*100,
+      currency :"INR",
+      receipt : "receipt_"+Date.now(),
     };
-
     const order = await razorpay.orders.create(options);
-
-    res.json({
-      success: true,
-      orderId: order.id,
-      amount: options.amount, // ✅ Razorpay ke liye paise me
-    });
+    res.json(order);
   } catch (err) {
-    console.log("Create Order Error:", err);
-    res.status(500).json({ success: false ,
-      error : err.message
-    });
+    console.log(err);
+    res.status(500).send("Error creating order");
   }
-});
+
+  });
   
+   
+    
 
 
 // 🔹 VERIFY PAYMENT API

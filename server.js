@@ -50,7 +50,7 @@ app.post("/create-order", async (req, res) => {
     console.log("PRICE PER PAGE:", pricePerPage);
     console.log("TOTAL ₹:", total);
     const options = {
-      amount: total*100,
+      amount: totalAmount*100,
       currency :"INR",
       receipt : "receipt_"+Date.now(),
     };

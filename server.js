@@ -1,105 +1,74 @@
+// ===== IMPORTS =====
 const express = require("express");
 const Razorpay = require("razorpay");
-const cors = require("cors");
 const crypto = require("crypto");
-require("dotenv").config();
+const cors = require("cors");
 
+// ===== APP INIT =====
 const app = express();
-
-// Middleware
-app.use(cors());
 app.use(express.json());
+app.use(cors()); // Allow frontend requests
 
-
-// Razorpay instance
+// ===== RAZORPAY INSTANCE =====
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
+  key_id: process.env.RAZORPAY_KEY_ID, // Render ENV variable
+  key_secret: process.env.RAZORPAY_KEY_SECRET // Render ENV variable
 });
 
-
-// Test route
-app.get("/", (req, res) => {
-  res.send("A4station Backend running 🚀");
-});
-
-
-// HELPER 6 DIGIT CODE
-function generateOrderCode() {
-  return Math,floor(100000+Math.random()
-* 900000).toString();
-}
-
-
-// 🔹 CREATE ORDER API
+// ===== CREATE ORDER =====
 app.post("/create-order", async (req, res) => {
-  try{
-    const {pages, copies, printType} = req.body;
-    let pricePerPage;
-    if (printType === "color") {
-      pricePerPage = 10;
-    } else if (printType ==="bw") {
-       pricePerPage = 5;
-      } else {
-        pricePerPage =5;
-      }
-    const total = Number (pages)*Number (copies) * pricePerPage;
-    console.log("PRINT TYPE:",printType);
-    console.log("PAGES:",pages);
-    console.log("COPIES:", copies);
-    console.log("PRICE PER PAGE:", pricePerPage);
-    console.log("TOTAL ₹:", total);
+  try {
+    console.log("Create-order body:", req.body);
+
+    const { amount } = req.body;
+
+    if (!amount) {
+      return res.status(400).json({ error: "Amount missing" });
+    }
+
     const options = {
-      amount: totalAmount*100,
-      currency :"INR",
-      receipt : "receipt_"+Date.now(),
+      amount: amount * 100, // backend multiply, frontend sends rupees
+      currency: "INR",
+      receipt: "receipt_" + Date.now()
     };
+
     const order = await razorpay.orders.create(options);
-    res.json(order);
+    console.log("Order created:", order);
+
+    res.json(order); // send order back to frontend
+
   } catch (err) {
-    console.log(err);
-    res.status(500).send("Error creating order");
+    console.log("CREATE ORDER ERROR:", err);
+    res.status(500).json({ error: "Order creation failed" });
   }
+});
 
-  });
-  
-   
-    
-
-
-// 🔹 VERIFY PAYMENT API
+// ===== VERIFY PAYMENT =====
 app.post("/verify-payment", (req, res) => {
   try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-    } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ error: "Missing payment details" });
+    }
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(body.toString())
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      const orderCode = generateOrderCode();
-
-      res.json({ success: true, 
-        message: "Payment verified ✅",
-      orderCode:orderCode,
-     });
+      res.json({ success: true });
     } else {
-      res.status(400).json({ success: false, message: "Invalid signature ❌" });
-    } 
-  } catch (error) {
-    console.log("Verification Error:", error);
-    res.status(500).json({ success: false });
+      res.status(400).json({ success: false, error: "Signature mismatch" });
+    }
+  } catch (err) {
+    console.log("VERIFY PAYMENT ERROR:", err);
+    res.status(500).json({ error: "Payment verification failed" });
   }
 });
 
-
-// Start server
+// ===== SERVER START =====
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log("Server running on port", PORT));

@@ -22,7 +22,9 @@ app.get("/", (req, res) => {
 // Create order route
 app.post("/create-order", async (req, res) => {
   try {
-    const { pages, copies, printType } = req.body;
+    const  pages = Number(req.body.pages) ||1;
+    const copies = Number(req.body.copies) ||1;
+    const printType = req.body.printType ==="color"?"color":"bw";
 
     // Price logic
     const BW_PRICE = 5;
@@ -47,7 +49,11 @@ app.post("/create-order", async (req, res) => {
 
     const order = await razorpay.orders.create(options);
 
-    res.json(order); // frontend will get order_id and amount
+    res.json({
+      id: order.id,
+      currency: order.currency,
+      amount: order.amount
+    }); // frontend will get order_id and amount
 
   } catch (err) {
     console.log("Error creating order:", err);

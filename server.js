@@ -61,6 +61,27 @@ app.post("/create-order", async (req, res) => {
   }
 });
 
+//PAYMENT VERIFICATION
+app.post("/verify-payment",(req, res) =>
+{
+  try{
+    const {razorpay_order_id, razorpay_payment_id, razorpay_signature}
+    = req.body;
+    const generateed_signature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(razorpay_order_id + "|" + razorpay_payment_id)
+      .digest("hex");
+
+    if (generated_signature === razorpay_signature) {
+      res.json({ success: true });
+    } else {
+      res.status(400).json({ success: false });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

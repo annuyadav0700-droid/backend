@@ -27,18 +27,18 @@ app.post("/create-order", async (req, res) => {
     const printType = req.body.printType ==="color"?"color":"bw";
 
     // Price logic
-    const BW_PRICE = 5;
-    const COLOR_PRICE = 10;
-    const pricePerPage = printType === "color" ? COLOR_PRICE : BW_PRICE;
+    
+    const pricePerPage = printType === "color" ? 10 :5 ;
 
     // Total amount
+    const totalAmount = Number(pages) * Number(copies) * pricePerPage;
+
     
     console.log("Pages:", pages);
     console.log("Copies:", copies);
     console.log("Print type:", printType);
     console.log("FINAL AMOUNT ₹:", totalAmount);
-    const totalAmount = Number(pages) * Number(copies) * pricePerPage;
-
+    
     const options = {
       amount: totalAmount * 100, // Razorpay expects paise
       currency: "INR",

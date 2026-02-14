@@ -21,6 +21,7 @@ const upload = multer({ storage });
 
 app.post("/upload", upload.array("files"), (req, res) => {
   console.log("FILES RECEIVED:", req.files);
+  const uploadedFileName = req.files.map(f => f.filename);
   res.json({ success: true, files: req.files.map(f => f.filename) });
 });
 
@@ -59,6 +60,11 @@ app.post("/verify-payment", (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, fileName } = req.body;
 
+    if (!fileName) {
+      return
+      res.status(400).json({success:false,error:"File name is missing"});
+    }
+
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
       .createHmac("sha256", "dT6yr2cD8mdSbCqBQBHEqN0w")
@@ -77,7 +83,7 @@ app.post("/verify-payment", (req, res) => {
       codes.push({ code, file: fileName }); // save OTP + filename
       fs.writeFileSync("codes.json", JSON.stringify(codes, null, 2));
 
-      console.log("PAYMENT VERIFIED, OTP GENERATED:", code);
+      console.log("PAYMENT VERIFIED, OTP GENERATED:", code, "Files:",fileName);
       console.log("Stored codes:", codes);
 
       res.json({ success: true, code });

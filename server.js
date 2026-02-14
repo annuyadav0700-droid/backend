@@ -74,8 +74,7 @@ app.post("/create-order", async (req, res) => {
 
 app.post("/verify-payment", (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
-      req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, fileName } = req.body;
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
 
@@ -86,7 +85,7 @@ app.post("/verify-payment", (req, res) => {
 
     if (expectedSignature === razorpay_signature) {
 
-      // Generate 6 digit code
+      // Generate 6 digit OTP
       const code = Math.floor(100000 + Math.random() * 900000);
 
       // Read existing codes
@@ -95,13 +94,17 @@ app.post("/verify-payment", (req, res) => {
         codes = JSON.parse(fs.readFileSync("codes.json"));
       }
 
-      // Save new code
-      codes.push(code);
-      fs.writeFileSync("codes.json", JSON.stringify(codes));
+      // Save OTP + filename
+      codes.push({
+        code: code,
+        file: fileName // frontend se bhejna hoga upload ke baad
+      });
+      fs.writeFileSync("codes.json", JSON.stringify(codes, null, 2));
 
       console.log("Payment verified. Generated Code:", code);
       console.log("All stored codes:", codes);
 
+      // Return code to frontend
       res.json({ success: true, code });
 
     } else {
@@ -113,6 +116,7 @@ app.post("/verify-payment", (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 /* ================= VERIFY ORDER (KIOSK) ================= */
 
@@ -129,15 +133,21 @@ app.post("/verify-order", (req, res) => {
     console.log("Entered Code:", code);
     console.log("Stored Codes:", codes);
 
-    if (codes.includes(Number(code))) {
+    // Find OTP object
+    const order = codes.find(c => c.code === Number(code));
 
+    if (order) {
       // Remove used code
-      codes = codes.filter(c => c !== Number(code));
-      fs.writeFileSync("codes.json", JSON.stringify(codes));
+      codes = codes.filter(c => c.code !== Number(code));
+      fs.writeFileSync("codes.json", JSON.stringify(codes, null, 2));
 
-      console.log("Valid code. Printing triggered.");
+      console.log("Valid code. Printing triggered. File:", order.file);
 
-      res.json({ valid: true });
+      // Return valid + file URL
+      res.json({
+        valid: true,
+        fileUrl: `https://a4stationbackend.onrender.com/uploads/${order.file}`
+      });
 
     } else {
       console.log("Invalid code");
@@ -149,6 +159,7 @@ app.post("/verify-order", (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 /* ================= START SERVER ================= */
 

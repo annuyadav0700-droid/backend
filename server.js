@@ -86,7 +86,7 @@ app.post("/verify-payment", (req, res) => {
       console.log("PAYMENT VERIFIED, OTP GENERATED:", code, "Files:",fileName);
       console.log("Stored codes:", codes);
 
-      res.json({ success: true, code });
+      res.json({ success: true, code : OTP });
     } else {
       console.log("SIGNATURE MISMATCH");
       res.status(400).json({ success: false });

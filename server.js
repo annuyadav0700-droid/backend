@@ -20,14 +20,21 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 app.post("/upload", upload.array("files"), (req, res) => {
-  console.log("FILES RECEIVED:", req.files);
-  if (!req.files|| req.files.length === 0) {
-    return res.json ({success: false});
-  }
-  const uploadedFileName = req.files[0].filename;
-  res.json({ 
-    success: true, 
-    filesName: uploadedFileName });
+  try{
+    if (!req.files||req.files.length === 0) {
+      return res.json({success:false});
+    }
+  
+  console.log("Uploaded file:", req.files[0].filename);
+  res.json({
+    success:true,
+    filename:req.files[0].filename
+  });
+} catch (err) {
+  console.error("Upload error:",err);
+  res.json({success: false});
+}
+  
 });
 
 /* ================= RAZORPAY ================= */

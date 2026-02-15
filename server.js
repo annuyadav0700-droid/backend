@@ -56,46 +56,56 @@ app.post("/create-order", async (req, res) => {
 });
 
 /* ================= VERIFY PAYMENT ================= */
+
+
+
 app.post("/verify-payment", (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, fileName } = req.body;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      fileName
+    } = req.body;
 
-    if (!fileName) {
-      return
-      res.status(400).json({success:false,error:"File name is missing"});
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, error: "Payment data missing" });
     }
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
+
     const expectedSignature = crypto
       .createHmac("sha256", "dT6yr2cD8mdSbCqBQBHEqN0w")
       .update(body)
       .digest("hex");
 
-    if (expectedSignature === razorpay_signature) {
-
-      // Generate OTP
-      const code = Math.floor(100000 + Math.random() * 900000);
-
-      // Read existing codes
-      let codes = [];
-      if (fs.existsSync("codes.json")) codes = JSON.parse(fs.readFileSync("codes.json"));
-
-      codes.push({ code, file: fileName }); // save OTP + filename
-      fs.writeFileSync("codes.json", JSON.stringify(codes, null, 2));
-
-      console.log("PAYMENT VERIFIED, OTP GENERATED:", code, "Files:",fileName);
-      console.log("Stored codes:", codes);
-
-      res.json({ success: true, code : OTP });
-    } else {
+    if (expectedSignature !== razorpay_signature) {
       console.log("SIGNATURE MISMATCH");
-      res.status(400).json({ success: false });
+      return res.status(400).json({ success: false });
     }
+
+    // Generate OTP
+    const code = Math.floor(100000 + Math.random() * 900000);
+
+    let codes = [];
+    if (fs.existsSync("codes.json")) {
+      codes = JSON.parse(fs.readFileSync("codes.json"));
+    }
+
+    codes.push({ code, file: fileName || "no-file" });
+
+    fs.writeFileSync("codes.json", JSON.stringify(codes, null, 2));
+
+    console.log("PAYMENT VERIFIED, OTP:", code, "File:", fileName);
+
+    return res.json({ success: true, code });
+
   } catch (err) {
     console.error("VERIFY PAYMENT ERROR:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
+
 
 /* ================= VERIFY ORDER (KIOSK) ================= */
 app.post("/verify-order", (req, res) => {

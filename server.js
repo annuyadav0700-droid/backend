@@ -7,7 +7,14 @@ const fs = require("fs");
 const admin = require("firebase-admin");
 
 // 🔥 Firebase setup
-const serviceAccount = require("./serviceAccountKey.json");
+// On Render: set FIREBASE_SERVICE_ACCOUNT env var with the JSON content
+// Locally: uses serviceAccountKey.json file
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  serviceAccount = require("./serviceAccountKey.json");
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -87,6 +94,14 @@ app.post("/verify-payment", async (req, res) => {
       razorpay_payment_id,
       razorpay_signature,
       fileName,
+      kioskId,
+      kioskName,
+      copies,
+      printType,
+      printSide,
+      pages,
+      amount,
+      userId,
     } = req.body;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -104,7 +119,7 @@ app.post("/verify-payment", async (req, res) => {
       return res.status(400).json({ success: false });
     }
 
-    // ✅ Generate OTP
+    // ✅ Generate OTP code
     const code =
       "A4" +
       new Date().getHours() +
@@ -113,15 +128,23 @@ app.post("/verify-payment", async (req, res) => {
 
     const orderId = Date.now().toString();
 
-    // ✅ Save in Firebase
+    // ✅ Save ONE complete order in Firestore (includes kioskId for printer agent)
     await db.collection("orders").doc(orderId).set({
-      code: code,
+      code,
       file: fileName || "no-file",
       status: "pending",
+      kioskId: kioskId || "kiosk_1",
+      kioskName: kioskName || "",
+      copies: copies || 1,
+      printType: printType || "bw",
+      printSide: printSide || "single",
+      pages: pages || 1,
+      amount: amount || 0,
+      userId: userId || "",
       createdAt: new Date(),
     });
 
-    console.log("PAYMENT VERIFIED:", code);
+    console.log("✅ PAYMENT VERIFIED — Code:", code, "| Kiosk:", kioskId);
 
     res.json({ success: true, code, orderId });
   } catch (err) {
